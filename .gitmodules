@@ -1,0 +1,9 @@
+[submodule "smartcontract/nullshotChess/lib/forge-std"]
+	path = smartcontract/nullshotChess/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "my-chess-agent/chess-contract/lib/forge-std"]
+	path = my-chess-agent/chess-contract/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "smartcontract/nullshotChess/lib/openzeppelin-contracts"]
+	path = smartcontract/nullshotChess/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
