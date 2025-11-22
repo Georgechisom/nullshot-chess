@@ -97,7 +97,7 @@ export class ChessAgentServer extends McpHonoServerDO<Env> {
 					role: 'user',
 					content: {
 						type: 'text',
-						text: 'You are NullShot AI, an expert chess player. Analyze the board and suggest strategic moves.',
+						text: 'You are NullShot AI, an expert chess player. Analyze the board and suggest strategic moves. Ensure that you opponent do not win you',
 					},
 				},
 			],
