@@ -1,13 +1,13 @@
 # NullShot Chess - Decentralized 3D Chess dApp
 
-A stunning 3D chess dApp built for the **NullShot Hacks** hackathon, featuring immersive gameplay with React Three Fiber, blockchain-verified results via Ethereum Sepolia, and ERC721 NFT rewards for winners.
+A stunning 3D chess dApp built on the **NullShot** MCP, featuring immersive gameplay with React Three Fiber, blockchain verified results via Ethereum Sepolia, and ERC721 NFT rewards for winners.
 
 ![NullShot Chess](https://via.placeholder.com/1200x600/001F3F/50C878?text=NullShot+Chess+dApp)
 
 ## 🎮 Features
 
-- **Immersive 3D Chess**: Hyper-realistic chess pieces rendered with Three.js and React Three Fiber
-- **Dual Game Modes**: 
+- **Immersive 3D Chess**: Hyper realistic chess pieces rendered with Three.js and React Three Fiber
+- **Dual Game Modes**:
   - VS Another Player (local multiplayer)
   - VS NullShot AI (powered by MCP agent)
 - **10 Luxurious Themes**: From Classic Wood to Emerald Crown, with jewel-toned Zuma aesthetics
@@ -21,6 +21,7 @@ A stunning 3D chess dApp built for the **NullShot Hacks** hackathon, featuring i
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **React** + **TypeScript**: Type-safe component architecture
 - **React Three Fiber**: 3D rendering with Three.js
 - **@react-three/drei**: Helpers for 3D scenes (OrbitControls, Environment)
@@ -29,22 +30,25 @@ A stunning 3D chess dApp built for the **NullShot Hacks** hackathon, featuring i
 - **Shadcn UI**: Pre-built accessible components
 
 ### Blockchain
-- **Ethereum Sepolia Testnet**: Development/testing network
+
+- **Lisk Sepolia Testnet**: Development/testing network
 - **RainbowKit**: Wallet connection UI
 - **Wagmi + Viem**: Ethereum hooks and utilities
 - **Thirdweb SDK**: Contract interactions and NFT minting
 - **EIP-712**: Typed data signing for game results
 
 ### Game Logic
+
 - **chess.js**: Chess rules validation and move generation
 - **WebSockets**: Real-time AI move communication with MCP agent
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js v18+ and npm
 - MetaMask or compatible Web3 wallet
-- Sepolia testnet ETH (get from [faucet](https://sepoliafaucet.com/))
+- Sepolia testnet ETH (get from [faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia))
 
 ### Installation
 
@@ -107,28 +111,37 @@ All colors are defined as HSL in `src/index.css` and used via Tailwind tokens.
 ## 🔗 Blockchain Integration
 
 ### Smart Contract (ChessGame.sol)
+
 Deploy on Sepolia testnet:
+
 - Stores game results (wins/losses/games per address)
 - Verifies EIP-712 signatures
 - Mints ERC721 NFTs for winners
 
 ### Thirdweb Setup
+
 1. Connect to Sepolia in your wallet
 2. Import contract ABI in `src/utils/blockchain.ts` (TODO)
 3. Use Thirdweb SDK to call contract functions:
+
    ```typescript
-   import { useContract, useContractWrite } from 'thirdweb/react';
-   
-   const { contract } = useContract('YOUR_CONTRACT_ADDRESS');
-   const { mutate: submitResult } = useContractWrite(contract, 'submitGameResult');
+   import { useContract, useContractWrite } from "thirdweb/react";
+
+   const { contract } = useContract("YOUR_CONTRACT_ADDRESS");
+   const { mutate: submitResult } = useContractWrite(
+     contract,
+     "submitGameResult"
+   );
    ```
 
 ### Wallet Integration
+
 RainbowKit is pre-configured in `Header.tsx`. Add providers in `App.tsx`:
+
 ```typescript
 // TODO: Wrap App with RainbowKit + Wagmi providers
-import { RainbowKitProvider, getDefaultWallets } from '@rainbow-me/rainbowkit';
-import { WagmiConfig, createClient } from 'wagmi';
+import { RainbowKitProvider, getDefaultWallets } from "@rainbow-me/rainbowkit";
+import { WagmiConfig, createClient } from "wagmi";
 ```
 
 ## 🤖 AI Integration (MCP Agent)
@@ -137,8 +150,8 @@ The NullShot AI agent runs separately (backend repo). Connect via WebSocket:
 
 ```typescript
 // In ChessBoard3D.tsx after player move
-if (gameMode === 'ai') {
-  const ws = new WebSocket('http://localhost:8787/ws');
+if (gameMode === "ai") {
+  const ws = new WebSocket("http://localhost:8787/ws");
   ws.send(JSON.stringify({ fen: game.fen() }));
   ws.onmessage = (event) => {
     const aiMove = JSON.parse(event.data);
@@ -151,6 +164,7 @@ if (gameMode === 'ai') {
 ## 🎯 Roadmap / TODO
 
 ### Immediate (Hackathon MVP)
+
 - [ ] Implement RainbowKit wallet connection
 - [ ] Integrate Thirdweb contract calls
 - [ ] Connect WebSocket to MCP agent
@@ -158,6 +172,7 @@ if (gameMode === 'ai') {
 - [ ] Fetch real leaderboard data from contract
 
 ### Future Enhancements
+
 - [ ] **AR Mode**: WebXR for augmented reality chess
 - [ ] **Sound Effects**: Howler.js for piece moves and captures
 - [ ] **Replay Mode**: PGN recording and playback
@@ -170,6 +185,7 @@ if (gameMode === 'ai') {
 ## 📦 Deployment
 
 ### Vercel (Recommended)
+
 1. Push to GitHub
 2. Import project in [Vercel](https://vercel.com)
 3. Set environment variables:
@@ -178,6 +194,7 @@ if (gameMode === 'ai') {
 4. Deploy!
 
 ### Netlify
+
 ```bash
 npm run build
 netlify deploy --prod --dir=dist
@@ -196,14 +213,14 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ## 🤝 Contributing
 
-Built for a hackathon, but contributions welcome! Open an issue or PR.
+Built for every one, but contributions welcome! Open an issue or PR.
 
 ## 📞 Contact
 
-- **Email**: team@nullshot.chess
-- **GitHub**: [github.com/nullshot/chess-dapp](#)
-- **Twitter**: [@nullshot_chess](#)
+- **Email**: georgechipaul@gmail.com
+- **GitHub**: [github.com](#)
+- **Twitter**: [@chisom_georgee](#)
 
 ---
 
-**Made with ♔ for NullShot Hacks** 🎮✨
+**Made ♔ for all Users** 🎮✨

@@ -2,22 +2,26 @@
 
 ## Summary of Fixes
 
-Your MCP Chess Server is now working! Here's what was fixed:
+Your MCP Chess Server is now working!
 
 ### 1. **Durable Object Session Management** ✅
+
 **Problem**: Each request was creating a new Durable Object instance with random IDs, preventing session persistence.
 
 **Solution**: Updated `src/index.ts` to use a single named Durable Object instance:
+
 ```typescript
-const id = env.EXAMPLE_MCP_SERVER.idFromName('mcp-session');
+const id = env.EXAMPLE_MCP_SERVER.idFromName("mcp-session");
 ```
 
 This ensures all requests go to the same DO instance, maintaining session state.
 
 ### 2. **Missing Constructor** ✅
+
 **Problem**: `ChessAgentServer` class was missing the required constructor.
 
 **Solution**: Added constructor to `src/server.ts`:
+
 ```typescript
 constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -25,14 +29,17 @@ constructor(ctx: DurableObjectState, env: Env) {
 ```
 
 ### 3. **Removed Custom Transport Handlers** ✅
+
 **Problem**: Custom `/sse` and `/ws` handlers were interfering with the MCP SDK's built-in transport layer.
 
 **Solution**: Removed all custom handlers and let `McpHonoServerDO` parent class handle routing automatically.
 
 ### 4. **Updated MCP Configuration** ✅
+
 **Problem**: `mcp.json` was pointing to wrong endpoint.
 
 **Solution**: Updated to use proper SSE endpoint with session ID:
+
 ```json
 {
   "mcpServers": {
@@ -47,6 +54,7 @@ constructor(ctx: DurableObjectState, env: Env) {
 ## How the MCP Server Works Now
 
 ### Architecture
+
 ```
 Client Request
     ↓
@@ -65,11 +73,13 @@ Hono Routes:
 ### Endpoints
 
 1. **SSE Connection** (GET `/sse?sessionId=<id>`)
+
    - Establishes a Server-Sent Events connection
    - Returns event stream with endpoint information
    - Required before sending messages
 
 2. **Message Endpoint** (POST `/sse/message?sessionId=<id>`)
+
    - Sends JSON-RPC 2.0 messages
    - Requires active SSE session
    - Returns 202 Accepted for async processing
@@ -83,17 +93,20 @@ Hono Routes:
 ### Option 1: MCP Inspector (Recommended)
 
 The MCP Inspector should now work! When you run:
+
 ```bash
 cd my-chess-agent/mcp-server
 pnpm dev
 ```
 
 The Inspector will automatically open at:
+
 ```
 http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=<token>
 ```
 
 **Expected Behavior:**
+
 - ✅ Connection status: "Connected"
 - ✅ Server info: "NullShotChessAI v1.0.0"
 - ✅ Tools: `make_chess_move`
@@ -149,14 +162,17 @@ curl -X POST "http://localhost:8787/sse/message?sessionId=$SESSION_ID" \
 ## Available Tools
 
 ### `make_chess_move`
+
 Generates and validates a chess move based on the current board state.
 
 **Parameters:**
+
 - `fen` (string, required): Current board state in FEN notation
 - `side` (enum, required): "white" or "black"
 - `difficulty` (enum, optional): "easy", "medium", or "hard" (default: "medium")
 
 **Example:**
+
 ```json
 {
   "name": "make_chess_move",
@@ -201,4 +217,3 @@ See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed troubleshooting step
 **Status**: ✅ All systems operational!
 **Server**: http://localhost:8787
 **Inspector**: Check terminal output for URL with auth token
-
