@@ -1,0 +1,18 @@
+name = "mcp-server"
+main = "src/index.ts"  # Replace with your actual entrypoint (e.g., src/index.js if JS); check your project files
+compatibility_date = "2025-11-23"
+compatibility_flags = ["nodejs_compat"]  # For ethers/chess.js Node deps
+
+# Service binding to the deployed 'mcp' Worker
+[[services]]
+binding = "MCP_SERVICE"
+service = "mcp"
+
+# Your other bindings
+[[durable_objects.bindings]]
+name = "EXAMPLE_MCP_SERVER"
+class_name = "ExampleMcpServer"
+
+[[kv_namespaces]]
+binding = "KV_NULLSHOTCHESS"
+id = "ba5efc0ab1a145469a235c695b8b1e28"  # From your error; confirm with `npx wrangler kv:namespace list` if needed
