@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Zuma-inspired Chess dApp Design System
+   Mature, luxurious, ancient mystical aesthetic
+   Jewel tones with solid colors only (NO gradients)
+*/
+
+@layer base {
+  :root {
+    /* Deep navy background - mature and elegant */
+    --background: 210 100% 12%;
+    --foreground: 40 20% 95%;
+
+    /* Card surfaces with slight elevation */
+    --card: 210 90% 15%;
+    --card-foreground: 40 20% 95%;
+
+    --popover: 210 90% 15%;
+    --popover-foreground: 40 20% 95%;
+
+    /* Primary: Rich maroon for key actions */
+    --primary: 0 100% 16%;
+    --primary-foreground: 40 20% 95%;
+
+    /* Secondary: Forest green for subtle elements */
+    --secondary: 140 100% 12%;
+    --secondary-foreground: 40 20% 95%;
+
+    /* Muted: Darker navy for backgrounds */
+    --muted: 210 100% 10%;
+    --muted-foreground: 210 20% 60%;
+
+    /* Accent: Emerald for highlights */
+    --accent: 150 44% 55%;
+    --accent-foreground: 210 100% 12%;
+
+    /* Gold for special elements */
+    --gold: 45 100% 50%;
+    --gold-foreground: 210 100% 12%;
+
+    /* Sapphire for secondary accents */
+    --sapphire: 210 90% 40%;
+
+    /* Destructive/error states */
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 40 20% 95%;
+
+    --border: 210 50% 25%;
+    --input: 210 60% 20%;
+    --ring: 150 44% 55%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  /* Single dark theme - no light mode for this dApp */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+  }
+
+  /* Smooth animations for all interactions */
+  * {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Custom utilities for chess dApp */
+@layer utilities {
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+
+  .bg-gold {
+    background-color: hsl(var(--gold));
+  }
+
+  .text-sapphire {
+    color: hsl(var(--sapphire));
+  }
+
+  .bg-sapphire {
+    background-color: hsl(var(--sapphire));
+  }
+
+  /* Elegant shadows for depth */
+  .shadow-luxury {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  .shadow-glow-emerald {
+    box-shadow: 0 0 30px hsla(150, 44%, 55%, 0.3);
+  }
+
+  .shadow-glow-gold {
+    box-shadow: 0 0 30px hsla(45, 100%, 50%, 0.3);
+  }
+
+  /* 3D card effect */
+  .card-3d {
+    transform-style: preserve-3d;
+    transition: transform 0.3s ease;
+  }
+
+  .card-3d:hover {
+    transform: translateY(-8px) rotateX(2deg);
+  }
+}
+
+/* RainbowKit Mobile Optimizations */
+@media (max-width: 768px) {
+  /* Ensure RainbowKit modal is properly sized on mobile */
+  [data-rk] {
+    font-size: 16px !important; /* Prevents iOS zoom on input focus */
+  }
+
+  /* Make wallet modal full width on mobile */
+  [data-rk] > div[role="dialog"] {
+    max-width: 95vw !important;
+    margin: 0 auto;
+  }
+
+  /* Ensure wallet buttons are touch-friendly */
+  [data-rk] button {
+    min-height: 44px !important;
+    padding: 12px 16px !important;
+  }
+
+  /* Optimize wallet list for mobile */
+  [data-rk] [data-testid="rk-wallet-option"] {
+    padding: 16px !important;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  [data-rk] > div[role="dialog"] {
+    max-width: 480px !important;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1025px) {
+  [data-rk] .rk-modal-wrapper {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 9999 !important; /* Ensure it's above other elements */
+    visibility: visible !important;
+  }
+}
+
+/* Ensure wallet modal is always on top */
+[data-rk] {
+  z-index: 9999 !important;
+}
+
+/* Fix for mobile viewport height issues */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific fixes */
+  [data-rk] > div[role="dialog"] {
+    max-height: -webkit-fill-available !important;
+  }
+}
+
+/* Improve touch targets for mobile */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
