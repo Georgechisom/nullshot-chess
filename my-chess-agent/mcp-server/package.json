@@ -27,6 +27,7 @@
 		"@nullshot/mcp": "0.3.6",
 		"chess.js": "^1.4.0",
 		"ethers": "^6.15.0",
+		"hono": "^4.10.6",
 		"mcp-template": "github:null-shot/typescript-mcp-template",
 		"zod": "^3.25.76"
 	},

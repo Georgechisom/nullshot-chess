@@ -60,16 +60,16 @@ const HowToPlay = () => {
       <Header />
 
       <div className="pt-32 pb-20 px-6">
-        <div className="container mx-auto max-w-5xl">
+        <div className="md:container mx-auto max-w-5xl mt-5">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-16"
           >
-            <h1 className="text-5xl font-bold mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
               How to <span className="text-accent">Play</span>
             </h1>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-lg md:text-xl text-muted-foreground">
               Four simple steps to decentralized chess glory
             </p>
           </motion.div>
@@ -83,7 +83,7 @@ const HowToPlay = () => {
                 transition={{ delay: index * 0.15 }}
                 className="bg-card p-8 rounded-2xl border border-border shadow-luxury"
               >
-                <div className="flex items-start gap-6">
+                <div className="flex items-center md:items-start flex-col md:flex-row gap-6">
                   <div className="flex-shrink-0">
                     <div className="w-16 h-16 bg-accent/20 rounded-xl flex items-center justify-center text-accent">
                       {step.icon}
@@ -91,12 +91,14 @@ const HowToPlay = () => {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-3xl font-bold text-gold">
+                      <span className="text-3xl font-bold text-gold block">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <h2 className="text-2xl font-bold">{step.title}</h2>
+                      <h2 className="text-lg md:text-2xl font-bold text-nowrap px-2">
+                        {step.title}
+                      </h2>
                     </div>
-                    <p className="text-lg text-muted-foreground mb-4">
+                    <p className="text-base md:text-lg text-muted-foreground mb-4">
                       {step.description}
                     </p>
                     <ul className="space-y-2">
@@ -122,7 +124,9 @@ const HowToPlay = () => {
             transition={{ delay: 0.6 }}
             className="mt-12 bg-muted p-8 rounded-2xl border border-border"
           >
-            <h2 className="text-2xl font-bold mb-4">Chess Rules Refresher</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-nowrap md:text-center py-5">
+              Chess Rules Refresher
+            </h2>
             <div className="grid md:grid-cols-2 gap-6 text-muted-foreground">
               <div>
                 <h3 className="font-semibold text-foreground mb-2">

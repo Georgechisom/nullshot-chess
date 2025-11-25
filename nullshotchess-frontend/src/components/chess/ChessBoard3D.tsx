@@ -23,6 +23,9 @@ interface ChessBoard3DProps {
   boardDesign: BoardDesign;
   gameMode: GameMode;
   playerSide: "white" | "black";
+  roomId?: string;
+  opponentAddress?: string;
+  actualPlayerColor?: "white" | "black";
 }
 
 const ChessBoard3D = ({
@@ -30,6 +33,8 @@ const ChessBoard3D = ({
   boardDesign,
   gameMode,
   playerSide,
+  roomId,
+  actualPlayerColor,
 }: ChessBoard3DProps) => {
   const [game] = useState(new Chess());
   const [position, setPosition] = useState(game.board());
@@ -45,19 +50,17 @@ const ChessBoard3D = ({
   );
   const [showResultModal, setShowResultModal] = useState(false);
   const [hasGameStarted, setHasGameStarted] = useState(false);
-  const [gameId] = useState(uuidv4()); // Generate unique game ID
-  const [isResetting, setIsResetting] = useState(false); // Track reset state
+  const [gameId] = useState(uuidv4());
+  const [isResetting, setIsResetting] = useState(false);
   const mcpClientRef = useRef(getMCPClient());
   const navigate = useNavigate();
   const location = useLocation();
   const { toast: uiToast } = useToast();
 
-  // Connect to MCP server on mount if playing against AI
   useEffect(() => {
     if (gameMode === "ai") {
       const connectMCP = async () => {
         await mcpClientRef.current.connect();
-        // Connection status is logged in mcpClient
       };
       connectMCP();
     }
@@ -69,19 +72,41 @@ const ChessBoard3D = ({
     };
   }, [gameMode]);
 
-  // Handle AI's first move if AI plays white
+  useEffect(() => {
+    if (roomId) {
+      const savedFen = localStorage.getItem(`game_fen_${roomId}`);
+      if (savedFen) {
+        game.load(savedFen);
+        setPosition(game.board());
+      }
+    }
+  }, [roomId, game]);
+
+  useEffect(() => {
+    if (gameMode === "human" && roomId) {
+      const interval = setInterval(() => {
+        const savedFen = localStorage.getItem(`game_fen_${roomId}`);
+        if (savedFen && savedFen !== game.fen()) {
+          game.load(savedFen);
+          setPosition(game.board());
+          checkGameOver();
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [gameMode, roomId, game]);
+
   useEffect(() => {
     if (gameMode === "ai" && !hasGameStarted) {
       setHasGameStarted(true);
       const aiSide = playerSide === "white" ? "b" : "w";
       if (game.turn() === aiSide) {
-        // AI goes first
         setTimeout(() => makeAIMove(), 1000);
       }
     }
   }, [gameMode, playerSide, hasGameStarted]);
 
-  // Warn user before leaving page during active game
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!game.isGameOver() && hasGameStarted) {
@@ -97,7 +122,6 @@ const ChessBoard3D = ({
     };
   }, [game, hasGameStarted]);
 
-  // Warn user when navigating away during active game
   useEffect(() => {
     const unblock = () => {
       if (
@@ -113,13 +137,11 @@ const ChessBoard3D = ({
       return true;
     };
 
-    // This is a simple implementation - for production, use a proper router blocker
     return () => {
       unblock();
     };
   }, [location, game, hasGameStarted]);
 
-  // Board colors based on design
   const getBoardColors = () => {
     const designs = {
       walnut: { light: "#C19A6B", dark: "#654321" },
@@ -136,7 +158,6 @@ const ChessBoard3D = ({
     return designs[boardDesign];
   };
 
-  // Theme lighting configuration
   const getThemeLighting = () => {
     const themes = {
       classic: { ambient: 0.5, point: "#FFFFFF", intensity: 1 },
@@ -156,7 +177,20 @@ const ChessBoard3D = ({
   const colors = getBoardColors();
   const lighting = getThemeLighting();
 
-  // AI move function
+  const isPlayerTurn = () => {
+    const currentTurn = game.turn();
+
+    if (gameMode === "human" && actualPlayerColor) {
+      if (actualPlayerColor === "white" && currentTurn === "w") return true;
+      if (actualPlayerColor === "black" && currentTurn === "b") return true;
+      return false;
+    }
+
+    if (playerSide === "white" && currentTurn === "w") return true;
+    if (playerSide === "black" && currentTurn === "b") return true;
+    return false;
+  };
+
   const makeAIMove = async () => {
     if (isAIThinking || game.isGameOver() || isResetting) return;
 
@@ -176,17 +210,14 @@ const ChessBoard3D = ({
       console.log("✅ AI has made a move:", aiMove.move);
       console.log("New FEN:", aiMove.fen);
 
-      // Check again if resetting before applying move
       if (isResetting) {
         toast.dismiss();
         return;
       }
 
-      // Make the AI's move
       const move = game.move(aiMove.move);
 
       if (move) {
-        // Check if piece was captured
         if (move.captured) {
           const capturingPlayer = move.color === "w" ? "white" : "black";
           setCapturedPieces((prev) => ({
@@ -202,7 +233,10 @@ const ChessBoard3D = ({
         toast.dismiss();
         toast.success(`AI played: ${aiMove.move}`);
 
-        // Check for game end
+        if (gameMode === "human" && roomId) {
+          localStorage.setItem(`game_fen_${roomId}`, game.fen());
+        }
+
         checkGameOver();
       }
     } catch (error) {
@@ -215,20 +249,26 @@ const ChessBoard3D = ({
   };
 
   const handleSquareClick = (square: Square) => {
+    if (!isPlayerTurn()) {
+      toast.error("It's not your turn!");
+      return;
+    }
+
+    if (gameMode === "ai" && isAIThinking) {
+      toast.error("AI is thinking... Please wait.");
+      return;
+    }
+
     if (selectedSquare) {
-      // Try to make a move
       try {
         const move = game.move({
           from: selectedSquare,
           to: square,
-          promotion: "q", // Always promote to queen for simplicity
+          promotion: "q",
         });
 
         if (move) {
-          // Check if piece was captured
           if (move.captured) {
-            // The capturing player's color is move.color
-            // The captured piece belongs to the opponent
             const capturingPlayer = move.color === "w" ? "white" : "black";
             setCapturedPieces((prev) => ({
               ...prev,
@@ -243,24 +283,21 @@ const ChessBoard3D = ({
           setSelectedSquare(null);
           setLegalMoves([]);
 
-          // Check for game end
-          if (checkGameOver()) {
-            return; // Game is over, don't trigger AI move
+          if (gameMode === "human" && roomId) {
+            localStorage.setItem(`game_fen_${roomId}`, game.fen());
           }
 
-          // Trigger AI move after player's move
+          if (checkGameOver()) {
+            return;
+          }
+
           if (gameMode === "ai") {
-            const aiSide = playerSide === "white" ? "b" : "w";
-            if (game.turn() === aiSide) {
-              setTimeout(() => makeAIMove(), 500); // Small delay for better UX
-            }
+            setTimeout(() => makeAIMove(), 500);
           }
         } else {
-          // Invalid move, select new piece if it's player's piece
           selectSquare(square);
         }
       } catch {
-        // Invalid move, try selecting new piece
         selectSquare(square);
       }
     } else {
@@ -270,11 +307,35 @@ const ChessBoard3D = ({
 
   const selectSquare = (square: Square) => {
     const piece = game.get(square);
-    if (piece && piece.color === game.turn()) {
-      setSelectedSquare(square);
-      const moves = game.moves({ square, verbose: true });
-      setLegalMoves(moves.map((m) => m.to));
+
+    if (!piece) {
+      return;
     }
+
+    const currentTurn = game.turn();
+
+    if (piece.color !== currentTurn) {
+      toast.error("You can't move your opponent's pieces!");
+      return;
+    }
+
+    const playerColor =
+      gameMode === "human" && actualPlayerColor
+        ? actualPlayerColor
+        : playerSide;
+
+    const isPlayersPiece =
+      (playerColor === "white" && piece.color === "w") ||
+      (playerColor === "black" && piece.color === "b");
+
+    if (!isPlayersPiece) {
+      toast.error("That's not your piece!");
+      return;
+    }
+
+    setSelectedSquare(square);
+    const moves = game.moves({ square, verbose: true });
+    setLegalMoves(moves.map((m) => m.to));
   };
 
   const checkGameOver = (): boolean => {
@@ -282,30 +343,39 @@ const ChessBoard3D = ({
       let result: "win" | "loss" | "draw";
 
       if (game.isCheckmate()) {
-        // Determine winner
         const winner = game.turn() === "w" ? "black" : "white";
-        if (winner === playerSide) {
+
+        const playerColor =
+          gameMode === "human" && actualPlayerColor
+            ? actualPlayerColor
+            : playerSide;
+
+        if (winner === playerColor) {
           result = "win";
         } else {
           result = "loss";
         }
       } else {
-        // Draw (stalemate, insufficient material, etc.)
         result = "draw";
       }
 
       setGameResult(result);
       setShowResultModal(true);
+
+      // Clean up game data from localStorage
+      if (gameMode === "human" && roomId) {
+        localStorage.removeItem(`game_data_${roomId}`);
+      }
+
       return true;
     }
     return false;
   };
 
   const handleReset = () => {
-    // Set resetting flag to stop AI immediately
     setIsResetting(true);
     setIsAIThinking(false);
-    toast.dismiss(); // Dismiss any AI thinking toasts
+    toast.dismiss();
 
     if (!game.isGameOver() && hasGameStarted) {
       const confirmReset = window.confirm(
@@ -316,24 +386,26 @@ const ChessBoard3D = ({
         return;
       }
 
-      // Count as loss and show modal
       setGameResult("loss");
       setShowResultModal(true);
     }
 
-    // Reset the game state
     game.reset();
     setPosition(game.board());
     setSelectedSquare(null);
     setLegalMoves([]);
     setCapturedPieces({ white: [], black: [] });
     setHasGameStarted(false);
-    setIsResetting(false); // Reset the flag
+    setIsResetting(false);
+
+    if (gameMode === "human" && roomId) {
+      localStorage.removeItem(`game_fen_${roomId}`);
+      localStorage.removeItem(`game_data_${roomId}`);
+    }
   };
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
-      {/* 3D Canvas */}
       <Canvas shadows className="touch-none">
         <PerspectiveCamera makeDefault position={[0, 12, 12]} />
         <OrbitControls
@@ -357,7 +429,6 @@ const ChessBoard3D = ({
         />
         <Environment preset="sunset" />
 
-        {/* Board base */}
         <mesh position={[0, -0.3, 0]} receiveShadow>
           <boxGeometry args={[9, 0.5, 9]} />
           <meshStandardMaterial
@@ -367,19 +438,17 @@ const ChessBoard3D = ({
           />
         </mesh>
 
-        {/* Squares */}
         {position.map((row, rowIndex) =>
           row.map((piece, colIndex) => {
             const isLight = (rowIndex + colIndex) % 2 === 0;
-            const file = String.fromCharCode(97 + colIndex); // a-h
-            const rank = (8 - rowIndex).toString(); // 8-1
+            const file = String.fromCharCode(97 + colIndex);
+            const rank = (8 - rowIndex).toString();
             const square = `${file}${rank}` as Square;
             const isSelected = square === selectedSquare;
             const isLegalMove = legalMoves.includes(square);
 
             return (
               <group key={square}>
-                {/* Square */}
                 <mesh
                   position={[colIndex - 3.5, 0, rowIndex - 3.5]}
                   rotation={[-Math.PI / 2, 0, 0]}
@@ -400,7 +469,6 @@ const ChessBoard3D = ({
                   />
                 </mesh>
 
-                {/* Legal move indicator */}
                 {isLegalMove && (
                   <mesh position={[colIndex - 3.5, 0.1, rowIndex - 3.5]}>
                     <cylinderGeometry args={[0.2, 0.2, 0.1, 16]} />
@@ -414,7 +482,6 @@ const ChessBoard3D = ({
                   </mesh>
                 )}
 
-                {/* Piece */}
                 {piece && (
                   <ChessPiece
                     type={piece.type}
@@ -427,7 +494,6 @@ const ChessBoard3D = ({
           })
         )}
 
-        {/* Captured pieces - White's captures (left side) */}
         {capturedPieces.white.map((piece, idx) => (
           <CapturedPiece
             key={`captured-white-${idx}`}
@@ -442,7 +508,6 @@ const ChessBoard3D = ({
           />
         ))}
 
-        {/* Captured pieces - Black's captures (right side) */}
         {capturedPieces.black.map((piece, idx) => (
           <CapturedPiece
             key={`captured-black-${idx}`}
@@ -458,13 +523,11 @@ const ChessBoard3D = ({
         ))}
       </Canvas>
 
-      {/* Game Result Modal */}
       <GameResultModal
         isOpen={showResultModal}
         result={gameResult}
         onClose={() => {
           setShowResultModal(false);
-          // Reset game state when closing modal without submitting
           game.reset();
           setPosition(game.board());
           setSelectedSquare(null);
@@ -472,12 +535,16 @@ const ChessBoard3D = ({
           setCapturedPieces({ white: [], black: [] });
           setHasGameStarted(false);
           setGameResult(null);
+
+          // Clean up game data from localStorage
+          if (gameMode === "human" && roomId) {
+            localStorage.removeItem(`game_data_${roomId}`);
+          }
         }}
-        playerSide={playerSide}
+        playerSide={actualPlayerColor || playerSide}
         gameId={gameId}
       />
 
-      {/* UI Overlay */}
       <div className="absolute top-4 left-4 right-4 md:top-6 md:left-6 md:right-6 flex flex-col md:flex-row justify-between items-start gap-3">
         <div className="bg-card/90 backdrop-blur-sm px-4 py-2 md:px-6 md:py-3 rounded-xl border border-border">
           <div className="text-xs md:text-sm text-muted-foreground mb-1">
@@ -485,12 +552,16 @@ const ChessBoard3D = ({
           </div>
           {(() => {
             const currentTurn = game.turn();
-            const isPlayerTurn =
-              (currentTurn === "w" && playerSide === "white") ||
-              (currentTurn === "b" && playerSide === "black");
+            const playerColor =
+              gameMode === "human" && actualPlayerColor
+                ? actualPlayerColor
+                : playerSide;
+            const isPlayerTurnNow =
+              (currentTurn === "w" && playerColor === "white") ||
+              (currentTurn === "b" && playerColor === "black");
 
             if (gameMode === "ai") {
-              if (isPlayerTurn) {
+              if (isPlayerTurnNow) {
                 return (
                   <div
                     className={`text-lg md:text-2xl font-bold ${
@@ -503,20 +574,32 @@ const ChessBoard3D = ({
               } else {
                 return (
                   <div className="text-lg md:text-2xl font-bold text-gold">
-                    🤖 NullShot AI
+                    🤖 AI's Turn
                   </div>
                 );
               }
             } else {
-              return (
-                <div
-                  className={`text-lg md:text-2xl font-bold ${
-                    currentTurn === "w" ? "text-white" : "text-gray-800"
-                  }`}
-                >
-                  {currentTurn === "w" ? "♔ White" : "♚ Black"}
-                </div>
-              );
+              if (isPlayerTurnNow) {
+                return (
+                  <div
+                    className={`text-lg md:text-2xl font-bold ${
+                      playerColor === "white" ? "text-white" : "text-black"
+                    }`}
+                  >
+                    {playerColor === "white" ? "♔" : "♚"} Your Turn
+                  </div>
+                );
+              } else {
+                return (
+                  <div
+                    className={`text-lg md:text-2xl font-bold ${
+                      currentTurn === "w" ? "text-white" : "text-black"
+                    }`}
+                  >
+                    {currentTurn === "w" ? "♔" : "♚"} Opponent's Turn
+                  </div>
+                );
+              }
             }
           })()}
         </div>
@@ -543,7 +626,6 @@ const ChessBoard3D = ({
         </div>
       </div>
 
-      {/* Game Info */}
       <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6 bg-card/90 backdrop-blur-sm px-4 py-3 md:px-6 md:py-4 rounded-xl border border-border">
         <div className="text-xs md:text-sm text-muted-foreground mb-2">
           Game Mode
@@ -554,12 +636,15 @@ const ChessBoard3D = ({
         <div className="text-xs md:text-sm text-muted-foreground mt-2">
           Playing as:{" "}
           <span className="text-foreground font-medium">
-            {playerSide === "white" ? "♔ White" : "♚ Black"}
+            {(gameMode === "human" && actualPlayerColor
+              ? actualPlayerColor
+              : playerSide) === "white"
+              ? "♔ White"
+              : "♚ Black"}
           </span>
         </div>
       </div>
 
-      {/* Instructions - Hidden on mobile */}
       <div className="hidden md:block absolute bottom-6 right-6 bg-card/90 backdrop-blur-sm px-6 py-4 rounded-xl border border-border max-w-xs">
         <div className="text-sm">
           <div className="font-semibold mb-2">Controls:</div>

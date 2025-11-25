@@ -21,9 +21,7 @@
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": [
-				"ExampleMcpServer"
-			]
+			"new_sqlite_classes": ["ExampleMcpServer"]
 		}
 	],
 	"services": [
@@ -32,10 +30,11 @@
 			"service": "mcp"
 		}
 	],
-	"vars": {},
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"vars": {
+		"AI_PROVIDER": "anthropic",
+		"MODEL_ID": "claude-sonnet-4-20250514"
+	},
+	"compatibility_flags": ["nodejs_compat"],
 	"env": {
 		"development": {
 			"vars": {}

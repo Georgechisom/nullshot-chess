@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcp-template": {
+      "source": "github:null-shot/typescript-mcp-template"
+    },
+    "mcp-server": {
+      "type": "mcp-server",
+      "url": "http://localhost:8787/sse"
+    }
+  }
+}

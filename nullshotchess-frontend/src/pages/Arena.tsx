@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import Header from "@/components/layout/Header";
@@ -9,7 +9,10 @@ import BoardSelector from "@/components/game/BoardSelector";
 import ChessBoard3D from "@/components/chess/ChessBoard3D";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { ChevronLeft, ChevronRight, Lock, Unlock } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { getAllRooms, GameRoom } from "./WaitingRoom";
 import toast from "react-hot-toast";
@@ -48,6 +51,9 @@ const Arena = () => {
   const [playerSide, setPlayerSide] = useState<PlayerSide>(null);
   const [theme, setTheme] = useState<ChessTheme>("classic");
   const [board, setBoard] = useState<BoardDesign>("walnut");
+  const [isPrivateRoom, setIsPrivateRoom] = useState(false);
+  const [roomIdToJoin, setRoomIdToJoin] = useState("");
+  const [showJoinWithId, setShowJoinWithId] = useState(false);
 
   const canStartGame = gameMode && playerSide;
 
@@ -76,7 +82,6 @@ const Arena = () => {
       return;
     }
 
-    // Randomize side if selected
     const finalSide =
       playerSide === "random"
         ? Math.random() > 0.5
@@ -85,7 +90,6 @@ const Arena = () => {
         : playerSide;
 
     if (gameMode === "human") {
-      // Create a new game room for multiplayer
       const room: GameRoom = {
         id: uuidv4(),
         player1: address,
@@ -94,15 +98,14 @@ const Arena = () => {
         board,
         createdAt: Date.now(),
         status: "waiting",
+        isPrivate: isPrivateRoom,
+        player1Side: finalSide as "white" | "black",
       };
 
-      // Save room to localStorage
       localStorage.setItem(`game_room_${room.id}`, JSON.stringify(room));
 
-      // Navigate to waiting room
       navigate("/waiting-room", { state: { room } });
     } else {
-      // Start AI game immediately
       setPlayerSide(finalSide as "white" | "black");
       setGameStarted(true);
     }
@@ -114,23 +117,22 @@ const Arena = () => {
       return;
     }
 
-    // Get all available rooms
     const rooms = getAllRooms();
     const availableRooms = rooms.filter(
-      (r) => r.status === "waiting" && r.player1 !== address
+      (r) => r.status === "waiting" && r.player1 !== address && !r.isPrivate // Only show public rooms
     );
 
     if (availableRooms.length === 0) {
-      toast.error("No active games available. Create a new game!");
+      toast.error("No public games available. Try joining with a room ID!");
       return;
     }
 
-    // Join the first available room
     const roomToJoin = availableRooms[0];
+    const player2Side = roomToJoin.player1Side === "white" ? "black" : "white";
+
     roomToJoin.player2 = address;
     roomToJoin.status = "active";
 
-    // Update room in localStorage
     localStorage.setItem(
       `game_room_${roomToJoin.id}`,
       JSON.stringify(roomToJoin)
@@ -138,15 +140,115 @@ const Arena = () => {
 
     toast.success("Joined game! Starting...");
 
-    // Navigate to game
     navigate("/game", {
       state: {
         gameMode: "human",
-        playerSide: "black", // Player 2 is always black
+        playerSide: player2Side,
         theme: roomToJoin.theme,
         board: roomToJoin.board,
         roomId: roomToJoin.id,
         opponentAddress: roomToJoin.player1,
+        actualPlayerColor: player2Side,
+      },
+    });
+  };
+
+  const handleJoinWithId = () => {
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (!roomIdToJoin.trim()) {
+      toast.error("Please enter a room ID");
+      return;
+    }
+
+    const roomData = localStorage.getItem(`game_room_${roomIdToJoin.trim()}`);
+
+    if (!roomData) {
+      toast.error("Room not found!");
+      return;
+    }
+
+    const room: GameRoom = JSON.parse(roomData);
+
+    if (room.status === "completed") {
+      toast.error("This game has already ended");
+      return;
+    }
+
+    // Allow player 1 to rejoin their own waiting room
+    if (room.player1 === address && room.status === "waiting") {
+      toast.success("Rejoining your waiting room...");
+      navigate("/waiting-room", { state: { room } });
+      return;
+    }
+
+    // Allow player 1 to rejoin their active game
+    if (room.player1 === address && room.status === "active") {
+      toast.success("Rejoining your active game...");
+      navigate("/game", {
+        state: {
+          gameMode: "human",
+          playerSide: room.player1Side,
+          theme: room.theme,
+          board: room.board,
+          roomId: room.id,
+          opponentAddress: room.player2,
+          actualPlayerColor: room.player1Side,
+        },
+      });
+      return;
+    }
+
+    // Allow player 2 to rejoin their active game
+    if (room.player2 === address && room.status === "active") {
+      const player2Side = room.player1Side === "white" ? "black" : "white";
+      toast.success("Rejoining your active game...");
+      navigate("/game", {
+        state: {
+          gameMode: "human",
+          playerSide: player2Side,
+          theme: room.theme,
+          board: room.board,
+          roomId: room.id,
+          opponentAddress: room.player1,
+          actualPlayerColor: player2Side,
+        },
+      });
+      return;
+    }
+
+    // New player joining
+    if (room.status !== "waiting") {
+      toast.error("This game is no longer available");
+      return;
+    }
+
+    if (room.player1 === address) {
+      toast.error("You cannot join your own game!");
+      return;
+    }
+
+    const player2Side = room.player1Side === "white" ? "black" : "white";
+
+    room.player2 = address;
+    room.status = "active";
+
+    localStorage.setItem(`game_room_${room.id}`, JSON.stringify(room));
+
+    toast.success("Joined private game! Starting...");
+
+    navigate("/game", {
+      state: {
+        gameMode: "human",
+        playerSide: player2Side,
+        theme: room.theme,
+        board: room.board,
+        roomId: room.id,
+        opponentAddress: room.player1,
+        actualPlayerColor: player2Side,
       },
     });
   };
@@ -195,22 +297,21 @@ const Arena = () => {
       <Header />
 
       <div className="pt-32 pb-20 px-6">
-        <div className="container mx-auto max-w-6xl">
+        <div className="md:container mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-12"
           >
-            <h1 className="text-5xl font-bold mb-4">
+            <h1 className="text-3xl md:text-5xl font-bold mb-4">
               Enter the <span className="text-gold">Arena</span>
             </h1>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base md:text-xl text-muted-foreground">
               Configure your game settings and prepare for battle
             </p>
           </motion.div>
 
-          {/* Multi-Step Card Configuration */}
-          <div className="relative min-h-[600px] flex items-center justify-center overflow-hidden">
+          <div className="relative min-h-[1000px] md:min-h-[800px] flex items-center justify-center overflow-hidden">
             <AnimatePresence mode="wait" custom={direction}>
               {currentStep === "mode" && (
                 <motion.div
@@ -221,10 +322,10 @@ const Arena = () => {
                   animate="center"
                   exit="exit"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  className="absolute w-full max-w-4xl"
+                  className="absolute w-full md:max-w-4xl"
                 >
                   <div className="bg-card p-8 rounded-3xl rounded-tl-none border-2 border-gold/50 shadow-2xl">
-                    <h2 className="text-3xl font-bold mb-6 text-center">
+                    <h2 className="text-lg md:text-3xl text-nowrap font-bold mb-6 md:text-center py-5">
                       <span className="text-gold">Step 1:</span> Choose Game
                       Mode
                     </h2>
@@ -236,8 +337,7 @@ const Arena = () => {
                       }}
                     />
 
-                    {/* Join Active Game Button */}
-                    <div className="mt-6 text-center">
+                    <div className="mt-6">
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                           <div className="w-full border-t border-border"></div>
@@ -248,17 +348,55 @@ const Arena = () => {
                           </span>
                         </div>
                       </div>
-                      <Button
-                        onClick={handleJoinGame}
-                        variant="outline"
-                        className="mt-4 border-accent text-accent hover:bg-accent/10"
-                      >
-                        Join Active Game
-                      </Button>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Join an existing multiplayer game waiting for an
-                        opponent
-                      </p>
+
+                      <div className="mt-4 space-y-3">
+                        <Button
+                          onClick={handleJoinGame}
+                          variant="outline"
+                          className="w-full border-accent text-accent hover:bg-accent/10"
+                        >
+                          <Unlock className="mr-2 w-4 h-4" />
+                          Join Any Available Game
+                        </Button>
+
+                        <div className="relative">
+                          <Button
+                            onClick={() => setShowJoinWithId(!showJoinWithId)}
+                            variant="outline"
+                            className="w-full border-gold text-gold hover:bg-gold/10"
+                          >
+                            <Lock className="mr-2 w-4 h-4" />
+                            Join with Room ID
+                          </Button>
+                        </div>
+
+                        {showJoinWithId && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="space-y-2"
+                          >
+                            <Input
+                              placeholder="Enter Room ID"
+                              value={roomIdToJoin}
+                              onChange={(e) => setRoomIdToJoin(e.target.value)}
+                              className="w-full"
+                            />
+                            <Button
+                              onClick={handleJoinWithId}
+                              className="w-full bg-gold text-gold-foreground hover:bg-gold/90"
+                            >
+                              Join Private Game
+                            </Button>
+                          </motion.div>
+                        )}
+
+                        <p className="text-xs text-center text-muted-foreground py-2">
+                          Join an existing multiplayer game or enter a room ID
+                          for private games
+                        </p>
+                      </div>
                     </div>
 
                     <div className="flex justify-end mt-8">
@@ -289,11 +427,11 @@ const Arena = () => {
                   className="absolute w-full max-w-4xl"
                 >
                   <div className="bg-card p-8 rounded-2xl rounded-tl-none border-2 border-gold/50 shadow-2xl">
-                    <h2 className="text-3xl font-bold mb-6 text-center">
+                    <h2 className="text-lg md:text-3xl font-bold mb-6 text-center">
                       <span className="text-gold">Step 2:</span> Select Your
                       Side
                     </h2>
-                    <div className="grid md:grid-cols-3 gap-4">
+                    <div className="grid md:grid-cols-3 gap-6 py-5">
                       {[
                         { value: "white", label: "White", icon: "♔" },
                         { value: "black", label: "Black", icon: "♚" },
@@ -310,8 +448,10 @@ const Arena = () => {
                               : "border-border hover:border-accent/50"
                           }`}
                         >
-                          <div className="text-6xl mb-3">{side.icon}</div>
-                          <div className="font-semibold text-xl">
+                          <div className="text-4xl md:text-6xl mb-3">
+                            {side.icon}
+                          </div>
+                          <div className="font-semibold text-base md:text-xl">
                             {side.label}
                           </div>
                         </button>
@@ -354,7 +494,7 @@ const Arena = () => {
                   className="absolute w-full max-w-4xl"
                 >
                   <div className="bg-card p-8 rounded-2xl rounded-tl-none border-2 border-gold/50 shadow-2xl">
-                    <h2 className="text-3xl font-bold mb-6 text-center">
+                    <h2 className="text-xl md:text-3xl font-bold mb-6 text-center">
                       <span className="text-gold">Step 3:</span> Choose Theme
                     </h2>
                     <ThemeSelector selected={theme} onSelect={setTheme} />
@@ -394,7 +534,7 @@ const Arena = () => {
                   className="absolute w-full max-w-4xl"
                 >
                   <div className="bg-card p-8 rounded-2xl rounded-tl-none border-2 border-gold/50 shadow-2xl">
-                    <h2 className="text-3xl font-bold mb-6 text-center">
+                    <h2 className="text-lg md:text-3xl font-bold mb-6 text-center">
                       <span className="text-gold">Step 4:</span> Select Board
                       Design
                     </h2>
@@ -435,7 +575,7 @@ const Arena = () => {
                   className="absolute w-full max-w-4xl"
                 >
                   <div className="bg-card p-8 rounded-2xl rounded-tl-none border-2 border-gold/50 shadow-2xl">
-                    <h2 className="text-3xl font-bold mb-6 text-center">
+                    <h2 className="text-xl py-5 md:text-3xl font-bold mb-6 text-center">
                       <span className="text-gold">Ready to Play!</span>
                     </h2>
                     <div className="space-y-4 mb-8">
@@ -467,6 +607,25 @@ const Arena = () => {
                           {board}
                         </span>
                       </div>
+
+                      {gameMode === "human" && (
+                        <div className="flex justify-between items-center p-4 bg-background rounded-lg">
+                          <div className="flex items-center gap-2">
+                            {isPrivateRoom ? (
+                              <Lock className="w-4 h-4 text-gold" />
+                            ) : (
+                              <Unlock className="w-4 h-4 text-accent" />
+                            )}
+                            <span className="text-muted-foreground">
+                              {isPrivateRoom ? "Private Room:" : "Public Room:"}
+                            </span>
+                          </div>
+                          <Switch
+                            checked={isPrivateRoom}
+                            onCheckedChange={setIsPrivateRoom}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="flex justify-between">
                       <Button

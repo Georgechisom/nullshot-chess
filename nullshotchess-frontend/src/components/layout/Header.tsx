@@ -28,7 +28,7 @@ const Header = () => {
             <div className="w-10 h-10 bg-gold rounded-lg flex items-center justify-center shadow-glow-gold">
               <span className="text-gold-foreground text-xl font-bold">♔</span>
             </div>
-            <span className="text-2xl font-bold">
+            <span className="text-xl md:text-2xl font-bold">
               <span className="text-gold">Null</span>
               <span className="text-accent">Shot</span> Chess
             </span>

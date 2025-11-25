@@ -9,13 +9,13 @@ const About = () => {
       <Header />
 
       <div className="pt-32 pb-20 px-6">
-        <div className="container mx-auto max-w-4xl">
+        <div className="md:container mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-16"
           >
-            <h1 className="text-5xl font-bold mb-4">
+            <h1 className="text-2xl md:text-5xl font-bold mb-4 mt-5">
               About <span className="text-gold">NullShot</span> Chess
             </h1>
             <p className="text-xl text-muted-foreground">
@@ -30,11 +30,11 @@ const About = () => {
               transition={{ delay: 0.1 }}
               className="bg-card p-8 rounded-2xl border border-border shadow-luxury"
             >
-              <h2 className="text-3xl font-bold mb-4 flex items-center gap-3">
+              <h2 className="text-2xl md:text-3xl font-bold mb-4 flex items-center gap-3">
                 <Sparkles className="text-accent" />
                 The Vision
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed">
+              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
                 NullShot Chess reimagines the timeless game of chess for the
                 Web3 era. Built on the NullShot MCP, our dApp combines immersive
                 3D gameplay with blockchain verification to create a truly
@@ -50,7 +50,7 @@ const About = () => {
               transition={{ delay: 0.2 }}
               className="bg-card p-8 rounded-2xl border border-border shadow-luxury"
             >
-              <h2 className="text-3xl font-bold mb-4 flex items-center gap-3">
+              <h2 className="text-2xl md:text-3xl font-bold mb-4 flex items-center gap-3">
                 <Code className="text-sapphire" />
                 Technology Stack
               </h2>
@@ -108,11 +108,11 @@ const About = () => {
               transition={{ delay: 0.3 }}
               className="bg-card p-8 rounded-2xl border border-border shadow-luxury"
             >
-              <h2 className="text-3xl font-bold mb-4 flex items-center gap-3">
+              <h2 className="text-2xl md:text-3xl font-bold mb-4 flex items-center gap-3">
                 <Shield className="text-gold" />
                 Fair Play Guarantee
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed mb-4">
+              <p className="text-base md:text-lg text-muted-foreground leading-relaxed mb-4">
                 We leverage cryptographic signatures (EIP-712) to ensure every
                 game result is authentic and tamper proof. When you play against
                 another human, both players sign the result. Against our AI,
@@ -132,11 +132,11 @@ const About = () => {
               transition={{ delay: 0.4 }}
               className="bg-card p-8 rounded-2xl border border-border shadow-luxury"
             >
-              <h2 className="text-3xl font-bold mb-4 flex items-center gap-3">
+              <h2 className="text-2xl md:text-3xl font-bold mb-4 flex items-center gap-3">
                 <Trophy className="text-gold" />
                 NFT Rewards
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed">
+              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
                 Every victory earns you an ERC721 NFT badge minted directly to
                 your wallet. These tokens aren't just collectibles, they're
                 proof of your strategic mastery. Build your collection, showcase

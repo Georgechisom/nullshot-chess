@@ -7,79 +7,73 @@ import { Gamepad2, Trophy, Sparkles, Shield } from "lucide-react";
 import ChessBoardPreview from "@/components/chess/ChessBoardPreview";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  useGetWinners,
   useChessGameContract,
   TotalGamesStats,
 } from "@/hooks/useChessContract";
 import { readContract } from "thirdweb";
 
 const Index = () => {
-  const [totalGames, setTotalGames] = useState(0);
   const [totalNFTs, setTotalNFTs] = useState(0);
-  const { data: winnersData } = useGetWinners();
+  const [isLoading, setIsLoading] = useState(false);
   const contract = useChessGameContract();
-  const { totalGamesPlayedByEveryone } = TotalGamesStats();
+  const { totalGamesPlayedByEveryone, events } = TotalGamesStats();
 
+  // Calculate unique players from events
+  const uniquePlayers = useMemo(() => {
+    if (!events || events.length === 0) {
+      return [];
+    }
+    const playersSet = new Set<string>();
+    events.forEach((event: any) => {
+      const args = event.args || {};
+      const player1 = args.player1;
+      const player2 = args.player2;
+      if (player1 && player1 !== "0x0000000000000000000000000000000000000000") {
+        playersSet.add(player1.toLowerCase());
+      }
+      if (player2 && player2 !== "0x0000000000000000000000000000000000000000") {
+        playersSet.add(player2.toLowerCase());
+      }
+    });
+    return Array.from(playersSet);
+  }, [events]);
+
+  // Fetch NFT stats whenever uniquePlayers changes
   useEffect(() => {
-    let mounted = true;
-
-    const fetchStats = async () => {
-      if (!winnersData || winnersData.length === 0) {
-        setTotalGames(0);
+    const fetchNFTStats = async () => {
+      if (uniquePlayers.length === 0) {
         setTotalNFTs(0);
         return;
       }
 
+      setIsLoading(true);
       try {
-        let gamesCount = 0;
         let nftsCount = 0;
 
-        for (const addr of winnersData) {
-          const wins = await readContract({
-            contract,
-            method: "function getWins(address player) view returns (uint256)",
-            params: [addr],
-          });
-          const losses = await readContract({
-            contract,
-            method: "function getLosses(address player) view returns (uint256)",
-            params: [addr],
-          });
-          const draws = await readContract({
-            contract,
-            method: "function getDraws(address player) view returns (uint256)",
-            params: [addr],
-          });
+        // Fetch NFT balance for each unique player
+        for (const addr of uniquePlayers) {
           const nfts = await readContract({
             contract,
             method: "function balanceOf(address owner) view returns (uint256)",
             params: [addr],
           });
-
-          gamesCount += Number(wins) + Number(losses) + Number(draws);
           nftsCount += Number(nfts);
         }
 
-        if (mounted) {
-          setTotalGames(gamesCount);
-          setTotalNFTs(nftsCount);
-        }
+        setTotalNFTs(nftsCount);
       } catch (error) {
-        console.error("Error fetching stats:", error);
+        console.error("Error fetching NFT stats:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (winnersData && winnersData.length > 0) {
-      fetchStats();
+    if (uniquePlayers.length > 0) {
+      fetchNFTStats();
     }
-
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [uniquePlayers, contract]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,22 +83,22 @@ const Index = () => {
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-muted/30" />
 
-        <div className="container mx-auto relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="md:container mx-auto relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center justify-center">
             {/* Left: Text Content */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <h1 className="text-6xl font-bold mb-6 leading-tight">
+              <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold mb-6 leading-tight">
                 <span className="text-gold">Decentralized</span> Chess
                 <br />
                 <span className="text-accent">On-Chain</span> Glory
               </h1>
 
-              <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-                Play immersive 3D chess against humans or NullShot AI. Every
+              <p className="text-base md:text-xl text-muted-foreground mb-8 leading-relaxed">
+                Play immersive chess against humans or NullShot AI. Every
                 victory is immortalized on-chain with an ERC721 NFT badge. Fair
                 play guaranteed through cryptographic signatures.
               </p>
@@ -132,7 +126,7 @@ const Index = () => {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-6 mt-12">
+              <div className="grid grid-cols-3 items-center justify-center gap-6 mt-12">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-gold">
                     {totalGamesPlayedByEveryone}
@@ -161,7 +155,7 @@ const Index = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative h-[600px] rounded-2xl overflow-hidden border border-border shadow-luxury"
+              className="relative h-[600px] rounded-2xl overflow-hidden md:border md:border-border md:shadow-luxury hover:shadow-luxury"
             >
               <Canvas>
                 <PerspectiveCamera makeDefault position={[0, 8, 8]} />
@@ -188,12 +182,12 @@ const Index = () => {
 
       {/* Features Section */}
       <section className="py-20 px-6 bg-muted">
-        <div className="container mx-auto">
+        <div className="md:container mx-auto">
           <motion.h2
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-4xl font-bold text-center mb-16"
+            className="text-2xl md:text-4xl font-bold text-center mb-16 text-nowrap"
           >
             Why <span className="text-accent">NullShot Chess</span>?
           </motion.h2>
@@ -234,7 +228,9 @@ const Index = () => {
                 className="bg-card p-8 rounded-xl border border-border shadow-luxury card-3d"
               >
                 <div className="mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                <h3 className="text-xl text-nowrap font-semibold mb-3">
+                  {feature.title}
+                </h3>
                 <p className="text-muted-foreground">{feature.description}</p>
               </motion.div>
             ))}
@@ -244,14 +240,14 @@ const Index = () => {
 
       {/* CTA Section */}
       <section className="py-20 px-6">
-        <div className="container mx-auto text-center">
+        <div className="md:container mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             className="max-w-3xl mx-auto bg-card p-12 rounded-2xl border border-border shadow-luxury"
           >
-            <h2 className="text-4xl font-bold mb-6">
+            <h2 className="text-2xl md:text-4xl font-bold mb-6">
               Ready to Claim <span className="text-gold">Victory</span>?
             </h2>
             <p className="text-xl text-muted-foreground mb-8">

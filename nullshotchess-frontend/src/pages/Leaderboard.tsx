@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Trophy, Medal, Award, RefreshCw } from "lucide-react";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 import {
@@ -27,9 +27,11 @@ const Leaderboard = () => {
   const [leaders, setLeaders] = useState<any[]>([]);
   const [totalNFTs, setTotalNFTs] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const contract = useChessGameContract();
   const { totalGamesPlayedByEveryone, events, refetchEvents } =
     TotalGamesStats();
+  console.log("totalgameplayedbyeveryone", totalGamesPlayedByEveryone);
 
   // Get player stats from blockchain
   const { data: playerWins, refetch: refetchWins } = useGetWins(address);
@@ -43,10 +45,15 @@ const Leaderboard = () => {
 
   const { mutateAsync: mintNFT } = useMintNFT();
 
-  const uniquePlayers = useMemo(() => {
-    if (!events) {
-      return [];
+  // SOLUTION 2: Calculate unique players inside fetchLeaderboard
+  const fetchLeaderboard = async () => {
+    // Calculate unique players fresh each time
+    if (!events || events.length === 0) {
+      setLeaders([]);
+      setTotalNFTs(0);
+      return;
     }
+
     const playersSet = new Set<string>();
     events.forEach((event: any) => {
       const args = event.args || {};
@@ -59,12 +66,9 @@ const Leaderboard = () => {
         playersSet.add(player2.toLowerCase());
       }
     });
-    return Array.from(playersSet);
-  }, [events]);
+    const currentUniquePlayers = Array.from(playersSet);
 
-  // Fetch leaderboard data
-  const fetchLeaderboard = async () => {
-    if (uniquePlayers.length === 0) {
+    if (currentUniquePlayers.length === 0) {
       setLeaders([]);
       setTotalNFTs(0);
       return;
@@ -73,36 +77,38 @@ const Leaderboard = () => {
     setIsLoading(true);
 
     try {
-      const leaderboardPromises = uniquePlayers.map(async (addr: string) => {
-        const wins = await readContract({
-          contract,
-          method: "function getWins(address player) view returns (uint256)",
-          params: [addr],
-        });
-        const losses = await readContract({
-          contract,
-          method: "function getLosses(address player) view returns (uint256)",
-          params: [addr],
-        });
-        const draws = await readContract({
-          contract,
-          method: "function getDraws(address player) view returns (uint256)",
-          params: [addr],
-        });
-        const nfts = await readContract({
-          contract,
-          method: "function balanceOf(address owner) view returns (uint256)",
-          params: [addr],
-        });
+      const leaderboardPromises = currentUniquePlayers.map(
+        async (addr: string) => {
+          const wins = await readContract({
+            contract,
+            method: "function getWins(address player) view returns (uint256)",
+            params: [addr],
+          });
+          const losses = await readContract({
+            contract,
+            method: "function getLosses(address player) view returns (uint256)",
+            params: [addr],
+          });
+          const draws = await readContract({
+            contract,
+            method: "function getDraws(address player) view returns (uint256)",
+            params: [addr],
+          });
+          const nfts = await readContract({
+            contract,
+            method: "function balanceOf(address owner) view returns (uint256)",
+            params: [addr],
+          });
 
-        return {
-          address: addr,
-          wins: Number(wins),
-          losses: Number(losses),
-          draws: Number(draws),
-          nfts: Number(nfts),
-        };
-      });
+          return {
+            address: addr,
+            wins: Number(wins),
+            losses: Number(losses),
+            draws: Number(draws),
+            nfts: Number(nfts),
+          };
+        }
+      );
 
       const leaderboardData = await Promise.all(leaderboardPromises);
 
@@ -144,8 +150,8 @@ const Leaderboard = () => {
         refetchNFTBalance(),
       ]);
 
-      // Fetch leaderboard
-      await fetchLeaderboard();
+      // Trigger fetchLeaderboard via refreshKey
+      setRefreshKey((prev) => prev + 1);
 
       toast.success("Data refreshed successfully!", { id: loadingToast });
     } catch (error) {
@@ -153,13 +159,13 @@ const Leaderboard = () => {
     }
   };
 
-  // Only fetch on mount - no automatic refresh
+  // Fetch leaderboard when events change or refresh is triggered
   useEffect(() => {
     if (events && events.length > 0) {
       fetchLeaderboard();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events]);
+  }, [events, refreshKey]);
 
   // Listen for refresh trigger from navigation state
   useEffect(() => {
@@ -234,14 +240,14 @@ const Leaderboard = () => {
       <Header />
 
       <div className="pt-32 pb-20 px-6">
-        <div className="container mx-auto max-w-5xl">
+        <div className="md:container mx-auto max-w-5xl">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-16"
           >
             <div className="flex items-center justify-center gap-4 mb-4">
-              <h1 className="text-5xl font-bold">
+              <h1 className="text-3xl md:text-5xl font-bold">
                 <span className="text-gold">Leaderboard</span>
               </h1>
               <Button
@@ -257,7 +263,7 @@ const Leaderboard = () => {
                 />
               </Button>
             </div>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base md:text-xl text-muted-foreground">
               Top players ranked by victories on-chain
             </p>
           </motion.div>
@@ -476,7 +482,7 @@ const Leaderboard = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="mt-12 text-center text-sm text-muted-foreground"
+            className="mt-12 text-center text-sm md:text-base text-muted-foreground"
           >
             <p>
               Leaderboard updates in real-time as games are submitted on-chain.

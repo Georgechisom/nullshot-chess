@@ -3,9 +3,12 @@ import { getContract } from "thirdweb";
 import { createThirdwebClient } from "thirdweb";
 import { defineChain } from "thirdweb/chains";
 import { usePublicClient, useWriteContract } from "wagmi";
-import { useEffect, useMemo, useState } from "react";
-import { getContractEvents } from "thirdweb";
+import { useEffect, useState } from "react";
 import { parseAbiItem } from "viem";
+import {
+  prepareContractCall,
+  sendTransaction as useSendTransaction,
+} from "thirdweb";
 
 const client = createThirdwebClient({
   clientId: import.meta.env.VITE_THIRDWEB_CLIENT_ID || "",
@@ -187,7 +190,8 @@ export const useMintNFT = () => {
   return { mutateAsync: mintNFT };
 };
 
-const DEPLOYMENT_BLOCK = 29176013;
+const DEPLOYMENT_BLOCK = 29176013n;
+const MAX_BLOCK_RANGE = 99000n; // Lisk RPC limit is 100k, using 99k to be safe
 
 export const TotalGamesStats = () => {
   const contract = useChessGameContract();
@@ -195,42 +199,95 @@ export const TotalGamesStats = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [totalGames, setTotalGames] = useState(0);
 
   const fetchEvents = async () => {
+    console.log("🔍 Starting fetchEvents...");
     setIsLoading(true);
-    if (!publicClient || !contract.address) {
+    setError(null);
+
+    if (!publicClient) {
+      console.error("❌ No publicClient available");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!contract.address) {
+      console.error("❌ No contract address");
       setIsLoading(false);
       return;
     }
 
     try {
-      const logs = await publicClient.getLogs({
-        address: contract.address as `0x${string}`,
-        event: parseAbiItem(
-          "event GameSubmitted(string indexed gameId, address indexed player1, address indexed player2, address winner, bool isAIGame, bool isDraw, uint256 timestamp)"
-        ),
-        fromBlock: BigInt(DEPLOYMENT_BLOCK),
-        toBlock: "latest",
-      });
-      setEvents(logs);
+      console.log("📡 Fetching current block number...");
+      const currentBlock = await publicClient.getBlockNumber();
+      console.log("Current block:", currentBlock.toString());
+      console.log("Deployment block:", DEPLOYMENT_BLOCK.toString());
+      console.log("Contract Address:", contract.address);
+
+      // Calculate number of chunks needed
+      const totalBlocks = currentBlock - DEPLOYMENT_BLOCK;
+      const numChunks = Math.ceil(
+        Number(totalBlocks) / Number(MAX_BLOCK_RANGE)
+      );
+      console.log(`📦 Fetching ${numChunks} chunks of logs...`);
+
+      const allLogs: any[] = [];
+
+      // Fetch logs in chunks
+      for (let i = 0; i < numChunks; i++) {
+        const fromBlock = DEPLOYMENT_BLOCK + BigInt(i) * MAX_BLOCK_RANGE;
+        const toBlock =
+          i === numChunks - 1
+            ? currentBlock
+            : DEPLOYMENT_BLOCK + BigInt(i + 1) * MAX_BLOCK_RANGE - 1n;
+
+        console.log(
+          `Fetching chunk ${
+            i + 1
+          }/${numChunks}: blocks ${fromBlock.toString()} to ${toBlock.toString()}`
+        );
+
+        const logs = await publicClient.getLogs({
+          address: contract.address as `0x${string}`,
+          event: parseAbiItem(
+            "event GameSubmitted(string indexed gameId, address indexed player1, address indexed player2, address winner, bool isAIGame, bool isDraw, uint256 timestamp)"
+          ),
+          fromBlock,
+          toBlock,
+        });
+
+        console.log(`✅ Chunk ${i + 1} fetched: ${logs.length} events`);
+        allLogs.push(...logs);
+      }
+
+      console.log("✅ Total logs fetched:", allLogs.length);
+      console.log("Sample events:", allLogs.slice(0, 2));
+
+      setEvents(allLogs);
+      setTotalGames(allLogs.length);
     } catch (err) {
+      console.error("❌ Error fetching events:", err);
       setError(err as Error);
+      setEvents([]);
+      setTotalGames(0);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEvents();
+    console.log("🚀 TotalGamesStats hook mounted");
+    if (publicClient && contract.address) {
+      fetchEvents();
+    } else {
+      console.warn("⚠️ Waiting for publicClient or contract address...");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicClient, contract.address]);
 
-  const totalGamesPlayedByEveryone = useMemo(
-    () => events?.length ?? 0,
-    [events]
-  );
-
   return {
-    totalGamesPlayedByEveryone,
+    totalGamesPlayedByEveryone: totalGames,
     isLoading,
     error,
     events,

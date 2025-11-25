@@ -53,10 +53,10 @@ const Contact = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-16"
           >
-            <h1 className="text-5xl font-bold mb-4">
+            <h1 className="text-3xl md:text-5xl font-bold mb-4">
               Get in <span className="text-accent">Touch</span>
             </h1>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-base md:text-xl text-muted-foreground">
               Questions, feedback, or collaboration? We'd love to hear from you.
             </p>
           </motion.div>
