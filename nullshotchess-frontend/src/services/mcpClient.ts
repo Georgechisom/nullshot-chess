@@ -19,7 +19,7 @@ export class MCPClient {
     this.url =
       config.url || import.meta.env.VITE_MCP_URL || "http://localhost:8787";
     this.sessionId = config.sessionId || this.generateSessionId();
-    console.log("🎯 MCP Client initialized with URL:", this.url);
+    // console.log("🎯 MCP Client initialized with URL:", this.url);
   }
 
   private generateSessionId(): string {
@@ -39,7 +39,7 @@ export class MCPClient {
 
       if (response.ok) {
         this.connected = true;
-        console.log("✅ MCP Server connected:", this.url);
+        // console.log("✅ MCP Server connected:", this.url);
       } else {
         throw new Error(`Health check failed: ${response.status}`);
       }
@@ -58,7 +58,7 @@ export class MCPClient {
     difficulty: "easy" | "medium" | "hard" = "hard"
   ): Promise<AIMove> {
     console.log("🤖 Requesting AI move from MCP server...");
-    console.log("URL:", `${this.url}/api/chess/move`);
+    // console.log("URL:", `${this.url}/api/chess/move`);
     console.log("FEN:", fen);
     console.log("Side:", side);
     console.log("Difficulty:", difficulty);

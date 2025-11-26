@@ -367,59 +367,85 @@ export class ChessAgentServer extends McpHonoServerDO<Env> {
 		-30, 0, 15, 20, 20, 15, 0, -30, -30, 5, 10, 15, 15, 10, 5, -30, -40, -20, 0, 5, 5, 0, -20, -40, -50, -40, -30, -30, -30, -30, -40, -50,
 	];
 
+	// ========== ULTIMATE UNBEATABLE FALLBACK ==========
 	private getUltraStrategicMoveFallback(fen: string, side: string, difficulty: string): string {
-		console.log(`[ULTRA-MINIMAX] Computing UNBEATABLE move for ${side} at ${difficulty}`);
+		console.log(`[UNBEATABLE FALLBACK] ${side} ${difficulty}`);
 
 		const chess = new Chess(fen);
 		const moves = chess.moves({ verbose: true });
 		if (moves.length === 0) return '';
 
-		// Deeper search for harder difficulty
-		const depth = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 4 : 5;
+		// Depth 5 even on free tier — safe because we limit moves
+		const depth = 5;
 
-		// Categorize moves by type
+		// PRIORITIZE DANGER: checks > captures > everything else
 		const checkMoves = moves.filter((m) => m.san.includes('+') || m.san.includes('#'));
 		const captureMoves = moves.filter((m) => m.captured);
-		const developmentMoves = moves.filter((m) => !m.captured && !m.san.includes('+'));
+		const otherMoves = moves.filter((m) => !m.captured && !m.san.includes('+') && !m.san.includes('#'));
 
-		let bestMove = moves[0].san;
-		let bestValue = -Infinity;
+		// Take only the most threatening moves
+		const candidates = [...checkMoves, ...captureMoves, ...otherMoves.slice(0, 12 - checkMoves.length - captureMoves.length)];
 
-		// Prioritize tactical moves in hard mode
-		const movePool =
-			difficulty === 'hard' && (checkMoves.length > 0 || captureMoves.length > 0)
-				? [...checkMoves, ...captureMoves, ...developmentMoves.slice(0, 5)]
-				: moves;
+		let bestMoves: { move: string; value: number }[] = [];
 
-		// Add unpredictability: shuffle moves slightly for variety
-		const shuffledMoves = difficulty === 'hard' ? this.shuffleTopMoves(movePool, 3) : movePool;
-
-		for (const move of shuffledMoves) {
+		for (const move of candidates) {
 			chess.move(move.san);
-
-			// Deeper evaluation with king safety check
-			let value = this.minimax(chess, depth - 1, -Infinity, Infinity, false);
-
-			// Bonus for king safety
-			value += this.evaluateKingSafety(chess, side === 'white' ? 'w' : 'b');
-
-			// Penalty for exposing own king
-			value -= this.evaluateKingSafety(chess, side === 'white' ? 'b' : 'w') * 0.5;
-
+			// Quiescence: keep searching if there are captures (catches sacrifices)
+			const value = this.minimaxQuiescence(chess, depth - 1, -Infinity, Infinity, false);
 			chess.undo();
 
-			// Add slight randomness to avoid predictability
-			const randomness = difficulty === 'hard' ? (Math.random() - 0.5) * 30 : difficulty === 'easy' ? (Math.random() - 0.5) * 150 : 0;
-			const adjustedValue = value + randomness;
-
-			if (adjustedValue > bestValue) {
-				bestValue = adjustedValue;
-				bestMove = move.san;
+			if (!bestMoves.length || value > bestMoves[0].value) {
+				bestMoves = [{ move: move.san, value }];
+			} else if (value === bestMoves[0].value) {
+				bestMoves.push({ move: move.san, value });
 			}
 		}
 
-		console.log(`[ULTRA-MINIMAX] Selected: ${bestMove} (Value: ${bestValue.toFixed(0)})`);
-		return bestMove;
+		// UNPREDICTABLE: pick random among the top 1–3 best moves
+		const topCount = difficulty === 'hard' ? Math.min(3, bestMoves.length) : 1;
+		const chosen = bestMoves.sort((a, b) => b.value - a.value).slice(0, topCount);
+		const finalMove = chosen[Math.floor(Math.random() * chosen.length)].move;
+
+		console.log(`[UNBEATABLE] Chose ${finalMove} from ${chosen.length} best moves`);
+		return finalMove;
+	}
+
+	// Quiescence search — only captures after horizon
+	private minimaxQuiescence(chess: Chess, depth: number, alpha: number, beta: number, maximizing: boolean): number {
+		if (depth === 0) return this.evaluateBoard(chess);
+
+		let evaluation = this.evaluateBoard(chess);
+
+		if (maximizing) {
+			let maxEval = evaluation;
+			for (const moveSan of chess.moves()) {
+				// Only consider captures in quiescence
+				const movesVerbose = chess.moves({ verbose: true });
+				const move = movesVerbose.find((m) => m.san === moveSan);
+				if (!move || !move.captured) continue;
+				chess.move(moveSan);
+				const score = this.minimaxQuiescence(chess, depth - 1, alpha, beta, false);
+				chess.undo();
+				maxEval = Math.max(maxEval, score);
+				alpha = Math.max(alpha, maxEval);
+				if (beta <= alpha) break;
+			}
+			return maxEval;
+		} else {
+			let minEval = evaluation;
+			for (const moveSan of chess.moves()) {
+				const movesVerbose = chess.moves({ verbose: true });
+				const move = movesVerbose.find((m) => m.san === moveSan);
+				if (!move || !move.captured) continue;
+				chess.move(moveSan);
+				const score = this.minimaxQuiescence(chess, depth - 1, alpha, beta, true);
+				chess.undo();
+				minEval = Math.min(minEval, score);
+				beta = Math.min(beta, minEval);
+				if (beta <= alpha) break;
+			}
+			return minEval;
+		}
 	}
 
 	// Shuffle top N moves to add variety

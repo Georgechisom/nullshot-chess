@@ -201,14 +201,14 @@ const ChessBoard3D = ({
       const currentFen = game.fen();
       const aiSide = playerSide === "white" ? "black" : "white";
 
-      console.log("🤖 Requesting AI move...");
-      console.log("Current FEN:", currentFen);
-      console.log("AI playing as:", aiSide);
+      // console.log("🤖 Requesting AI move...");
+      // console.log("Current FEN:", currentFen);
+      // console.log("AI playing as:", aiSide);
 
       const aiMove = await mcpClientRef.current.getAIMove(currentFen, aiSide);
 
-      console.log("✅ AI has made a move:", aiMove.move);
-      console.log("New FEN:", aiMove.fen);
+      // console.log("✅ AI has made a move:", aiMove.move);
+      // console.log("New FEN:", aiMove.fen);
 
       if (isResetting) {
         toast.dismiss();
@@ -574,7 +574,7 @@ const ChessBoard3D = ({
               } else {
                 return (
                   <div className="text-lg md:text-2xl font-bold text-gold">
-                    🤖 AI's Turn
+                    🤖 NullShot Ai Turn
                   </div>
                 );
               }

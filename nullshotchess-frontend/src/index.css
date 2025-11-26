@@ -197,3 +197,32 @@
     min-width: 44px;
   }
 }
+
+/* Additional iOS fixes for modal positioning */
+body {
+  position: relative !important;
+  overflow: auto !important; /* Prevent body scroll lock hiding modal */
+  height: auto !important;
+}
+
+html {
+  height: 100vh !important;
+  overflow: visible !important;
+}
+
+/* Force fixed positioning on mobile */
+[data-rk] [data-rainbowkit] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+  transform: none !important;
+  margin: 0 !important;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left) !important; /* Respect safe areas */
+}
