@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-NullShot Chess is a decentralized chess dApp developed as part on the NullShot MCP. It combines immersive gameplay with cutting edge blockchain technology and AI to provide a unique chess experience. Players can compete against other players locally or challenge the NullShot AI powered by a Model Context Protocol (MCP) agent. Every victory is recorded on the lisk Sepolia testnet with verified results, allowing winners to mint exclusive ERC721 NFTs as badges of honor.
+NullShot Chess is a decentralized chess dApp developed with the NullShot MCP. It combines immersive gameplay with cutting edge blockchain technology and AI to provide a unique chess experience. Players can compete against other players locally or challenge the NullShot AI powered by a Model Context Protocol (MCP) agent. Every victory is recorded on the lisk Sepolia testnet with verified results, allowing winners to mint exclusive ERC721 NFTs as badges of honor.
 
 The project integrates several components including an MCP server for AI logic, a smart contract managing game results and rewards, and a sophisticated React based frontend delivering a stunning, interactive chessboard.
 
@@ -85,5 +85,3 @@ The frontend is a React and TypeScript-powered decentralized application that br
 - Environment configuration supports Thirdweb client ID and contract address.
 
 ---
-
-This README aims to provide a clear and comprehensive overview of the NullShot Chess project, describing each core part and how they integrate to deliver this innovative decentralized chess experience.

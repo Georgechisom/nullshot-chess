@@ -2,15 +2,17 @@ import { useRef, useEffect } from 'react';
 import { Group } from 'three';
 import { useFrame } from '@react-three/fiber';
 import ChessPiece from './ChessPiece';
+import { ChessTheme } from '@/pages/Arena'; // ADDED: Import ChessTheme type
 
 interface CapturedPieceProps {
   type: 'p' | 'n' | 'b' | 'r' | 'q' | 'k';
   color: 'w' | 'b';
   position: [number, number, number];
   index: number;
+  theme: ChessTheme; // ADDED: Theme prop for captured pieces
 }
 
-const CapturedPiece = ({ type, color, position, index }: CapturedPieceProps) => {
+const CapturedPiece = ({ type, color, position, index, theme }: CapturedPieceProps) => {
   const groupRef = useRef<Group>(null);
   const animationRef = useRef({ startY: 10, currentY: 10, falling: true, time: 0 });
 
@@ -63,6 +65,7 @@ const CapturedPiece = ({ type, color, position, index }: CapturedPieceProps) => 
         type={type}
         color={color}
         position={[0, 0, 0]}
+        theme={theme}
       />
     </group>
   );
