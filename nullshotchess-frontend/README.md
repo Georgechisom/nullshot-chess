@@ -161,52 +161,6 @@ if (gameMode === "ai") {
 }
 ```
 
-## 🎯 Roadmap / TODO
-
-### Immediate (Hackathon MVP)
-
-- [ ] Implement RainbowKit wallet connection
-- [ ] Integrate Thirdweb contract calls
-- [ ] Connect WebSocket to MCP agent
-- [ ] Add EIP-712 signature modal after game end
-- [ ] Fetch real leaderboard data from contract
-
-### Future Enhancements
-
-- [ ] **AR Mode**: WebXR for augmented reality chess
-- [ ] **Sound Effects**: Howler.js for piece moves and captures
-- [ ] **Replay Mode**: PGN recording and playback
-- [ ] **Online Multiplayer**: Socket.io for remote opponents
-- [ ] **AI Difficulty Levels**: Easy/Medium/Hard strategy
-- [ ] **Share on X**: Tweet wins with NFT links
-- [ ] **Accessibility**: Keyboard controls, color-blind modes, voice commands
-- [ ] **Mobile Optimization**: Responsive 3D and lazy-loading assets
-
-## 📦 Deployment
-
-### Vercel (Recommended)
-
-1. Push to GitHub
-2. Import project in [Vercel](https://vercel.com)
-3. Set environment variables:
-   - `VITE_THIRDWEB_CLIENT_ID`
-   - `VITE_CONTRACT_ADDRESS`
-4. Deploy!
-
-### Netlify
-
-```bash
-npm run build
-netlify deploy --prod --dir=dist
-```
-
-## 🏆 Hackathon Info
-
-- **Event**: NullShot Hacks
-- **Co-Sponsor**: Thirdweb
-- **Testnet**: Ethereum Sepolia
-- **Category**: Web3 Gaming
-
 ## 📄 License
 
 MIT License - See [LICENSE](LICENSE) for details.

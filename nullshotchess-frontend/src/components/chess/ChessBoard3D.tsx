@@ -487,6 +487,7 @@ const ChessBoard3D = ({
                     type={piece.type}
                     color={piece.color}
                     position={[colIndex - 3.5, 0.5, rowIndex - 3.5]}
+                    theme={theme}
                   />
                 )}
               </group>
@@ -505,6 +506,7 @@ const ChessBoard3D = ({
               -3 + (idx % 4) * 0.8,
             ]}
             index={piece.index}
+            theme={theme}
           />
         ))}
 
@@ -519,6 +521,7 @@ const ChessBoard3D = ({
               -3 + (idx % 4) * 0.8,
             ]}
             index={piece.index}
+            theme={theme}
           />
         ))}
       </Canvas>

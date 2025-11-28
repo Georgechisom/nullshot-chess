@@ -1,14 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Trophy, X, Minus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import {
-  useAccount,
-  useSignTypedData,
-  useWaitForTransactionReceipt,
-} from "wagmi";
+import { useAccount, useSignTypedData } from "wagmi";
 import { useGetNonce, useSubmitAIGame } from "@/hooks/useChessContract";
 import { EIP712_DOMAIN, EIP712_TYPES } from "@/contracts/ChessGameABI";
 import { v4 as uuidv4 } from "uuid";
@@ -29,6 +25,8 @@ const GameResultModal = ({
   gameId,
 }: GameResultModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAISubmitted, setIsAISubmitted] = useState(false);
+  const [aiSubmissionFailed, setAISubmissionFailed] = useState(false);
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   const { data: nonce } = useGetNonce(address);
@@ -72,8 +70,196 @@ const GameResultModal = ({
     }
   };
 
+  // ===== AI SUBMISSION: Human signs, AI submits =====
+  const handleAISubmitResult = async () => {
+    console.log("🤖 Getting human signature for AI submission...");
+
+    if (!address || !isConnected) {
+      console.error("Wallet not connected");
+      toast.error("Please connect your wallet");
+      setAISubmissionFailed(true);
+      return;
+    }
+
+    if (nonce === undefined) {
+      console.error("Nonce is undefined");
+      toast.error("Unable to fetch nonce. Please refresh and try again.");
+      setAISubmissionFailed(true);
+      return;
+    }
+
+    setIsSubmitting(true);
+    const toastId = toast.loading(
+      "Please sign the message (FREE - no gas needed)..."
+    );
+
+    try {
+      const finalGameId = gameId || uuidv4();
+
+      // Determine winner - MUST match contract logic
+      const contractAddress = import.meta.env
+        .VITE_CONTRACT_ADDRESS as `0x${string}`;
+      const isDraw = result === "draw";
+
+      // Contract: address(0) for draws, contract address for AI wins
+      const winner = isDraw
+        ? ("0x0000000000000000000000000000000000000000" as `0x${string}`)
+        : contractAddress;
+
+      // Create message - MUST match contract's EIP-712 structure
+      const message = {
+        gameId: finalGameId,
+        player1: address as `0x${string}`, // Human is player1
+        player2: "0x0000000000000000000000000000000000000000" as `0x${string}`, // AI is address(0)
+        winner: winner,
+        isDraw: isDraw,
+        nonce: BigInt(nonce), // Human's nonce
+      };
+
+      console.log("📝 Message to sign:", message);
+      toast.loading("Please sign in your wallet (this is FREE)...", {
+        id: toastId,
+      });
+
+      // Get HUMAN signature (free - no gas)
+      const humanSignature = await signTypedDataAsync({
+        account: address as `0x${string}`,
+        domain: EIP712_DOMAIN,
+        types: EIP712_TYPES,
+        primaryType: "GameResult",
+        message,
+      });
+
+      console.log("✅ Human signature obtained");
+
+      // Send to AI server to submit transaction
+      toast.loading("AI is submitting to blockchain (AI pays gas)...", {
+        id: toastId,
+      });
+
+      const mcpUrl = import.meta.env.VITE_MCP_URL || "http://localhost:8787";
+
+      const response = await fetch(`${mcpUrl}/api/chess/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          gameId: finalGameId,
+          humanAddress: address,
+          winner: result === "draw" ? "draw" : "ai",
+          humanWon: false,
+          isDraw: isDraw,
+          signature: humanSignature, // Human's signature
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Server response:", errorText);
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const apiResult = await response.json();
+      console.log("📡 MCP Server response:", apiResult);
+
+      if (apiResult.success) {
+        toast.success("✅ Result submitted! AI paid the gas fees.", {
+          id: toastId,
+          duration: 8000,
+        });
+        setIsAISubmitted(true);
+
+        if (apiResult.txHash) {
+          const explorerUrl = `https://sepolia-blockscout.lisk.com/tx/${apiResult.txHash}`;
+          toast.success(
+            <div>
+              <p className="font-semibold mb-1">View on Block Explorer:</p>
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:underline text-xs break-all"
+              >
+                {explorerUrl}
+              </a>
+            </div>,
+            { duration: 15000 }
+          );
+
+          console.log("🔗 Transaction:", explorerUrl);
+        }
+
+        setTimeout(() => {
+          navigate("/leaderboard", { state: { refresh: true } });
+        }, 3000);
+      } else {
+        throw new Error(apiResult.message || "Failed to submit result");
+      }
+    } catch (error: unknown) {
+      console.error("❌ Submission error:", error);
+
+      let errorMessage = "Submission failed";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      // Check for specific error types
+      if (
+        errorMessage.includes("user rejected") ||
+        errorMessage.includes("User rejected")
+      ) {
+        toast.error("❌ You must sign to submit the result", { id: toastId });
+        setAISubmissionFailed(true);
+      } else if (
+        errorMessage.toLowerCase().includes("out of gas") ||
+        errorMessage.toLowerCase().includes("insufficient funds")
+      ) {
+        toast.error("⛽ AI wallet out of gas. You can submit manually.", {
+          id: toastId,
+          duration: 8000,
+        });
+        setAISubmissionFailed(true);
+      } else {
+        toast.error(`Error: ${errorMessage}`, { id: toastId, duration: 8000 });
+        setAISubmissionFailed(true);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Auto-trigger AI submission when AI wins
+  useEffect(() => {
+    if (
+      isOpen &&
+      result === "loss" &&
+      !isAISubmitted &&
+      !aiSubmissionFailed &&
+      address &&
+      nonce !== undefined
+    ) {
+      const timer = setTimeout(() => {
+        handleAISubmitResult();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, result, isAISubmitted, aiSubmissionFailed, address, nonce]);
+
+  // Reset states when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsAISubmitted(false);
+      setAISubmissionFailed(false);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
+  // ===== MANUAL SUBMISSION: Human signs and submits (pays gas) =====
   const handleSubmitResult = async () => {
-    console.log("🎮 Starting game submission...");
+    console.log("🎮 Starting manual game submission...");
     console.log("Wallet connected:", isConnected);
     console.log("Wallet address:", address);
     console.log("Nonce:", nonce);
@@ -113,29 +299,24 @@ const GameResultModal = ({
       }
 
       // Determine winner address
-      // - Draw: address(0)
-      // - Human wins: human address
-      // - AI wins: contract address (this is how the contract expects it)
       const contractAddress = import.meta.env
         .VITE_CONTRACT_ADDRESS as `0x${string}`;
       const winner = isDraw
         ? ("0x0000000000000000000000000000000000000000" as `0x${string}`)
         : humanWon
         ? (address as `0x${string}`)
-        : contractAddress; // AI wins = contract address
+        : contractAddress;
 
       // Create message for EIP-712 signing
       const message = {
         gameId: finalGameId,
         player1: address as `0x${string}`,
-        player2: "0x0000000000000000000000000000000000000000" as `0x${string}`, // AI address
+        player2: "0x0000000000000000000000000000000000000000" as `0x${string}`,
         winner,
         isDraw,
         nonce: BigInt(nonce),
       };
 
-      console.log("📝 EIP-712 Domain:", EIP712_DOMAIN);
-      console.log("📝 EIP-712 Types:", EIP712_TYPES);
       console.log("📝 Message to sign:", message);
 
       toast.loading("Please sign the transaction in your wallet...", {
@@ -155,7 +336,7 @@ const GameResultModal = ({
 
       toast.loading("Submitting to blockchain...", { id: toastId });
 
-      // Submit to contract
+      // Submit to contract (human pays gas)
       const txResult = await submitAIGame({
         args: [finalGameId, address, humanWon, isDraw, signature],
       });
@@ -169,7 +350,6 @@ const GameResultModal = ({
         );
       }
 
-      // Show success with transaction hash
       const txHash = txResult.transactionHash;
       const explorerUrl = `https://sepolia-blockscout.lisk.com/tx/${txHash}`;
 
@@ -180,7 +360,6 @@ const GameResultModal = ({
 
       console.log("🔗 View on Explorer:", explorerUrl);
 
-      // Show clickable link in a separate toast
       toast.success(
         <div>
           <p className="font-semibold mb-1">View on Block Explorer:</p>
@@ -196,7 +375,6 @@ const GameResultModal = ({
         { duration: 15000 }
       );
 
-      // Wait a bit before redirecting
       setTimeout(() => {
         navigate("/leaderboard", { state: { refresh: true } });
       }, 3000);
@@ -208,7 +386,6 @@ const GameResultModal = ({
       if (error instanceof Error) {
         errorMessage = error.message;
         console.error("Error message:", error.message);
-        console.error("Error stack:", error.stack);
       } else if (typeof error === "object" && error !== null) {
         const err = error as {
           reason?: string;
@@ -219,7 +396,6 @@ const GameResultModal = ({
         console.error("Error details:", err);
       }
 
-      // Check for specific error types
       if (
         errorMessage.includes("user rejected") ||
         errorMessage.includes("User rejected")
@@ -232,6 +408,7 @@ const GameResultModal = ({
       }
 
       toast.error(errorMessage, { id: toastId, duration: 8000 });
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -302,6 +479,19 @@ const GameResultModal = ({
                 </div>
               </div>
 
+              {/* AI Submission Info for Losses */}
+              {result === "loss" && !aiSubmissionFailed && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-6 text-sm text-center">
+                  <p className="text-blue-400">
+                    {isAISubmitted
+                      ? "✓ Result submitted! AI paid the gas fees."
+                      : isSubmitting
+                      ? "Please sign to let AI submit (you pay nothing)"
+                      : "AI will submit result (you just need to sign)"}
+                  </p>
+                </div>
+              )}
+
               {/* Buttons */}
               <div className="flex gap-3">
                 <Button
@@ -312,14 +502,40 @@ const GameResultModal = ({
                 >
                   Close
                 </Button>
-                <Button
-                  onClick={handleSubmitResult}
-                  className="flex-1 bg-gold text-gold-foreground hover:bg-gold/90"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Submitting..." : "Submit to Blockchain"}
-                </Button>
+
+                {/* Conditional Button Logic */}
+                {result === "loss" && !aiSubmissionFailed ? (
+                  // AI wins - AI will submit (user just signs)
+                  <Button
+                    onClick={handleAISubmitResult}
+                    className="flex-1 bg-gold text-gold-foreground hover:bg-gold/90"
+                    disabled={isSubmitting || isAISubmitted}
+                  >
+                    {isAISubmitted
+                      ? "✓ Submitted"
+                      : isSubmitting
+                      ? "Signing..."
+                      : "Sign to Submit"}
+                  </Button>
+                ) : (
+                  // Human wins, draw, or AI submission failed - manual submission
+                  <Button
+                    onClick={handleSubmitResult}
+                    className="flex-1 bg-gold text-gold-foreground hover:bg-gold/90"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit to Blockchain"}
+                  </Button>
+                )}
               </div>
+
+              {/* Additional Info */}
+              {result === "loss" && aiSubmissionFailed && (
+                <p className="text-xs text-center text-muted-foreground mt-3">
+                  AI couldn't submit. You'll need to submit manually (you pay
+                  gas).
+                </p>
+              )}
             </div>
           </motion.div>
         </>
