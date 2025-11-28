@@ -10,7 +10,7 @@ A stunning 3D chess dApp built on the **NullShot** MCP, featuring immersive game
 - **Dual Game Modes**:
   - VS Another Player (local multiplayer)
   - VS NullShot AI (powered by MCP agent)
-- **10 Luxurious Themes**: From Classic Wood to Emerald Crown, with jewel-toned Zuma aesthetics
+- **10 Luxurious Themes**: From Classic Wood to Emerald Crown, with jewel toned aesthetics
 - **10 Board Designs**: Dark Walnut, Marble, Jade, Lapis, and more with realistic textures
 - **Blockchain Verified**: Game results submitted on-chain with EIP-712 signatures
 - **NFT Rewards**: Mint ERC721 badges for every victory
@@ -177,4 +177,4 @@ Built for every one, but contributions welcome! Open an issue or PR.
 
 ---
 
-**Made ♔ for all Users** 🎮✨
+**Made ♔ for all Gamers** 🎮
