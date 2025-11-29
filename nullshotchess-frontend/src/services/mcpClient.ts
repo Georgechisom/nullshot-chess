@@ -19,7 +19,7 @@ export class MCPClient {
     this.url =
       config.url || import.meta.env.VITE_MCP_URL || "http://localhost:8787";
     this.sessionId = config.sessionId || this.generateSessionId();
-    // console.log("🎯 MCP Client initialized with URL:", this.url);
+    // console.log(" MCP Client initialized with URL:", this.url);
   }
 
   private generateSessionId(): string {
@@ -39,12 +39,12 @@ export class MCPClient {
 
       if (response.ok) {
         this.connected = true;
-        // console.log("✅ MCP Server connected:", this.url);
+        // console.log(" MCP Server connected:", this.url);
       } else {
         throw new Error(`Health check failed: ${response.status}`);
       }
     } catch (error) {
-      console.error("❌ MCP Server connection failed:", error);
+      console.error(" MCP Server connection failed:", error);
       this.connected = false;
       throw new Error(
         "MCP Server is not available. Please ensure the server is running."
@@ -57,7 +57,7 @@ export class MCPClient {
     side: "white" | "black",
     difficulty: "easy" | "medium" | "hard" = "hard"
   ): Promise<AIMove> {
-    console.log("🤖 Requesting AI move from MCP server...");
+    console.log("Requesting AI move from MCP server...");
     // console.log("URL:", `${this.url}/api/chess/move`);
     console.log("FEN:", fen);
     console.log("Side:", side);
@@ -88,14 +88,14 @@ export class MCPClient {
         throw new Error(data.error);
       }
 
-      console.log("✅ AI move received:", data.move);
+      console.log(" AI move received:", data.move);
 
       return {
         move: data.move,
         fen: data.newFen || data.fen,
       };
     } catch (error: any) {
-      console.error("❌ MCP Server error:", error);
+      console.error(" MCP Server error:", error);
 
       // Show error to user instead of silently falling back
       throw new Error(
